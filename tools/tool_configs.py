@@ -2,8 +2,9 @@ from langchain_chroma import Chroma
 from langchain_core.tools import tool
 
 from configs.config import Config
-from langchain.tools.retriever import create_retriever_tool
+from utils.logger_util import LoggerUtil
 
+logger = LoggerUtil.setup_logger(__name__)
 
 def get_tools(llm_embedding):
     """
@@ -22,13 +23,54 @@ def get_tools(llm_embedding):
         embedding_function=llm_embedding,
     )
 
-    retriever = verctorstore.as_retriever()
+    # retriever = verctorstore.as_retriever()
+    #
+    # retriever_tool = create_retriever_tool(
+    #     retriever,
+    #     name="retrieve",
+    #     description="这是问题沉淀记录工具，搜索并返回有关问题的记录。"
+    # )
 
-    retriever_tool = create_retriever_tool(
-        retriever,
-        name="retrieve",
-        description="这是健康档案查询工具，搜索并返回有关用户的健康档案信息。"
-    )
+    # 自定义检索工具，返回完整的元数据
+    @tool
+    def retrieve(query: str) -> str:
+        """
+        这是问题沉淀记录工具，搜索并返回有关问题的记录，包含详细元数据信息。
+
+        Args:
+            query: 搜索查询
+
+        Returns:
+            str: 包含问题记录和元数据的格式化字符串
+        """
+        # 获取检索结果，包含元数据
+        results = verctorstore.similarity_search_with_score(query, k=2)
+
+        if not results:
+            return "未找到相关问题记录"
+
+        formatted_results = []
+        for doc, score in results:
+            # 提取元数据
+            metadata = doc.metadata
+
+            # 格式化结果
+            result_str = f"问题: {doc.page_content}\n"
+            result_str += f"相似度得分: {score}\n"
+
+            # 添加元数据中的详细信息
+            if 'keywords' in metadata:
+                result_str += f"关键词: {metadata['keywords']}\n"
+            if 'reason' in metadata:
+                result_str += f"原因: {metadata['reason']}\n"
+            if 'steps' in metadata:
+                result_str += f"解决步骤: {metadata['steps']}\n"
+            if 'tools' in metadata:
+                result_str += f"使用工具: {metadata['tools']}\n"
+
+            formatted_results.append(result_str)
+            logger.info(f"--------------------------Formatted result: {result_str}")
+        return "\n---\n".join(formatted_results)
 
     @tool()
     def multiply(a: float, b: float) -> float:
@@ -37,4 +79,4 @@ def get_tools(llm_embedding):
 
     # 生成一个加法的工具，命名为sum
     # 返回工具列表
-    return [retriever_tool, multiply]
+    return [retrieve, multiply]

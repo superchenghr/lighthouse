@@ -2,31 +2,12 @@
 # # 设置日志基本配置，级别为DEBUG或INFO
 import logging
 
-from concurrent_log_handler import ConcurrentRotatingFileHandler
 from langgraph.prebuilt import tools_condition, ToolNode
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from langchain_core.messages import ToolMessage
-from configs.config import Config
+from utils.logger_util import LoggerUtil
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.handlers = []  # 清空默认处理器
-# 使用ConcurrentRotatingFileHandler
-handler = ConcurrentRotatingFileHandler(
-    # 日志文件
-    Config.LOG_FILE,
-    # 日志文件最大允许大小为5MB，达到上限后触发轮转
-    maxBytes = Config.MAX_BYTES,
-    # 在轮转时，最多保留3个历史日志文件
-    backupCount = Config.BACKUP_COUNT
-)
-# 设置处理器级别为DEBUG
-handler.setLevel(logging.DEBUG)
-handler.setFormatter(logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-))
-logger.addHandler(handler)
-
+logger = LoggerUtil.setup_logger("user_mgt_logger")
 
 class ToolConfig:
     def __init__(self, tools):
@@ -41,16 +22,16 @@ class ToolConfig:
         for tool in tools:
             tool_name = tool.name
             if "retrieve" in tool_name:
-                routing_config[tool_name] = "grade_documents"
-                logger.info(f"Tool '{tool_name}' routed to 'grade_documents' (retrieval tool)")
+                routing_config[tool_name] = "db_mcp_agent"
+                logger.info(f"-------------------------------Tool '{tool_name}' routed to 'db_mcp_agent' (retrieval tool)")
             elif "multiply" in tool_name:
                 # 将其路由目标设置为 "generate"（直接生成结果）
                 routing_config[tool_name] = "generate"
                 # 记录调试日志，说明该工具被路由到 "generate"，并标注为非检索工具
-                logger.debug(f"Tool '{tool_name}' routed to 'generate' (non-retrieval tool)")
+                logger.debug(f"-------------------------------Tool '{tool_name}' routed to 'generate' (non-retrieval tool)")
             else:
                 routing_config[tool_name] = "generate"
-                logger.info(f"Tool '{tool_name}' routed to 'generate' (default tool)")
+                logger.info(f"-------------------------------Tool '{tool_name}' routed to 'generate' (default tool)")
         if not routing_config:
             # 如果为空，记录警告日志，提示工具列表可能为空或未正确处理
             logger.warning("No tools provided or routing config is empty")
@@ -79,6 +60,7 @@ class ParallelToolNode(ToolNode):
         """执行单个工具调用"""
         try:
             tool_name = tool_call["name"]
+            logger.info(f"-------------------------------Running tool: {tool_name}")
             tool = tool_map.get(tool_name)
             # 检查工具是否存在，若不存在则抛出ValueError异常
             if not tool:
@@ -103,13 +85,13 @@ class ParallelToolNode(ToolNode):
     def __call__(self, state: dict) -> dict:
         """并行执行所有工具调用"""
         # 记录日志，表示开始处理工具调用
-        logger.info("ParallelToolNode processing tool calls")
+        logger.info("-------------------------------ParallelToolNode processing tool calls")
 
         last_message = state["messages"][-1]
         tool_calls = getattr(last_message, "tool_calls", [])
 
         if not tool_calls:
-            logger.warning("No tool calls found in last message")
+            logger.warning("-------------------------------No tool calls found in last message")
             return {"message": []}
 
         tool_map = {tool.name: tool for tool in self.tools}
@@ -127,7 +109,7 @@ class ParallelToolNode(ToolNode):
                     results.append(result)
                 except Exception as e:
                     # 记录工具执行失败的错误日志，包含异常信息
-                    logger.error(f"Tool execution failed: {e}")
+                    logger.error(f"-------------------------------Tool execution failed: {e}")
                     # 获取失败任务对应的tool_call
                     tool_call = future_to_tool[future]
                     # 创建包含错误信息的ToolMessage并添加到结果列表
@@ -137,5 +119,5 @@ class ParallelToolNode(ToolNode):
                         name=tool_call.get("name", "unknown")
                     ))
         # 执行结束
-        logger.info(f"Completed {len(results)} tool calls")
+        logger.info(f"-------------------------------Completed {len(results)} tool calls")
         return {"messages": results}

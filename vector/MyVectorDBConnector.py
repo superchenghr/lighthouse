@@ -22,12 +22,27 @@ class MyVectorDBConnector:
         # embedding处理函数
         self.embedding_fn = embedding_fn
 
-    def add_documents(self, documents):
+    def add_documents(self, documents, metadatas):
+        texts = [doc.page_content for doc in documents]
         self.collection.add(
-            embeddings=self.embedding_fn(documents),
-            documents=documents,
+            embeddings=self.embedding_fn(texts),
+            metadatas=metadatas,
+            documents=texts,
             ids=[str(uuid.uuid4()) for i in range(len(documents))]  # 文档的唯一标识符 自动生成uuid,128位
         )
+
+    def get_all_documents(self):
+        """
+        查询并返回所有文档
+        :return: 包含所有文档信息的字典
+        """
+        try:
+            results = self.collection.get()
+            return results
+        except Exception as e:
+            logger.info(f"获取所有文档时出错: {e}")
+            return []
+
 
     def search(self, query, top_n):
         try:

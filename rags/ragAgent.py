@@ -214,7 +214,7 @@ def rewrite(state: MessageState, llm_chat) -> dict:
         dict: 更新后的消息状态。
     """
 
-    logger.info("Rewriting user query...")
+    logger.info("-------------------------------Rewriting user query...")
     try:
         question = get_lastest_question(state)
         # 重写处理链
@@ -222,7 +222,7 @@ def rewrite(state: MessageState, llm_chat) -> dict:
         # 调用重写后的处理链生成新查询
         response = rewrite_chain.invoke({"question": question})
         rewrite_count = state.get("rewrite_count", 0) + 1
-        logger.info(f"Rewrite count: {rewrite_count}")
+        logger.info(f"-------------------------------Rewrite count: {rewrite_count}")
         # 返回更新后的对话状态
         return {"messages": [response], "rewrite_count": rewrite_count}
     except Exception as e:
@@ -313,6 +313,7 @@ def route_after_tools(state: MessageState, tool_config: ToolConfig) -> Literal["
         return "generate"
     try:
         last_message = state["messages"][-1]
+        logger.info(f"-------------------------------Last message: {last_message}")
         if not hasattr(last_message, "name") or last_message.name is None:
             logger.error("Last message does not have a name, defaulting to generate")
             return "generate"

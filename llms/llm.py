@@ -17,6 +17,12 @@ MODEL_CONFIGS = {
         "chat_model": "qwen-max",
         "embedding_model": "text-embedding-v1"
     },
+    "zhipu": {
+        "base_url": "https://open.bigmodel.cn/api/paas/v4",
+        "api_key":  os.getenv("ZHIPUAI_API_KEY"),
+        "chat_model": "GLM-4-Plus",
+        "embedding_model": "embedding-3"
+    },
     "ollama": {
         "base_url": "http://localhost:11434/v1",
         "api_key": "ollama",

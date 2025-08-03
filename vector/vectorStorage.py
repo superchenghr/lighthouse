@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 TEXT_LANGUAGE = 'Chinese'
 # get_embeddings方法计算向量
 def get_embeddings(llmType, texts):
+    print(texts)
     if llmType == 'qwen':
         try:
             client = OpenAI(
@@ -22,10 +23,21 @@ def get_embeddings(llmType, texts):
                 api_key=os.getenv("DASHSCOPE_API_KEY")
             )
             data = client.embeddings.create(input=texts,model="text-embedding-v1").data
+            print(data)
             return [x.embedding for x in data]
         except Exception as e:
             logger.info(f"生成向量时出错: {e}")
             return []
+    elif llmType == 'zhipu':
+        try:
+            client = OpenAI(
+                base_url="https://open.bigmodel.cn/api/paas/v4",
+                api_key=os.getenv("ZHIPUAI_API_KEY")
+            )
+            data = client.embeddings.create(input=texts,model="embedding-3").data
+            return [x.embedding for x in data]
+        except Exception as e:
+            logger.info(f"生成向量时出错: {e}")
     else:
         logger.error("未定义的LLM类型")
 

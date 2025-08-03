@@ -1,0 +1,5 @@
+# 忽略指定的文件夹
+input/
+output/
+vent/
+chromaDB/
